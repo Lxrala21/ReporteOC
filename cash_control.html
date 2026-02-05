@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cash Control</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        }
+        .add-row-btn {
+            background-color: #34495e;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .add-row-btn:hover {
+            background-color: #2c3e50;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            margin-top: 20px;
+        }
+        th {
+            background-color: #34495e;
+            color: white;
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            border-bottom: 2px solid #2c3e50;
+        }
+        td {
+            padding: 0;
+            border: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+        td input, td select {
+            width: 100%;
+            border: none;
+            padding: 10px;
+            font-size: 14px;
+            box-sizing: border-box;
+            background: transparent;
+            color: #2c3e50;
+        }
+        td input:focus, td select:focus {
+            outline: 2px solid #5d6d7e;
+            background-color: #f8f9fa;
+        }
+        td input[type="date"] {
+            cursor: pointer;
+        }
+        td input[type="number"] {
+            text-align: right;
+        }
+        .income-cell input, .expense-cell input, .balance-cell input {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        .income-cell {
+            color: #27ae60;
+            font-weight: 600;
+        }
+        .expense-cell {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+        .balance-cell {
+            background-color: #ecf0f1;
+            font-weight: 600;
+        }
+        .delete-btn {
+            background-color: #95a5a6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 5px;
+            transition: all 0.2s ease;
+        }
+        .delete-btn:hover {
+            background-color: #7f8c8d;
+        }
+        select {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cash Control</h1>
+
+        <div style="margin-bottom: 15px; padding: 15px; background-color: #f8f9fa; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label style="font-weight: 600;">Mes/Año:</label>
+                <select id="monthSelector" onchange="changeMonth()" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    <option value="01">Enero</option>
+                    <option value="02">Febrero</option>
+                    <option value="03">Marzo</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Mayo</option>
+                    <option value="06">Junio</option>
+                    <option value="07">Julio</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+                <input type="number" id="yearSelector" value="2026" min="2020" max="2050" onchange="changeMonth()" style="padding: 8px; width: 80px; border-radius: 4px; border: 1px solid #ddd;">
+            </div>
+            <button class="add-row-btn" onclick="downloadExcel()" style="background-color: #27ae60;">📥 Descargar Excel</button>
+        </div>
+
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <button class="add-row-btn" onclick="addNewRow()">+ Agregar Nueva Transacción</button>
+            <button class="add-row-btn" onclick="window.location.href='weekly_summary.html'" style="background-color: #5d6d7e;">📅 Resumen Semanal</button>
+            <button class="add-row-btn" onclick="window.location.href='monthly_summary.html'" style="background-color: #7f8c8d;">📊 Resumen Mensual</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 120px;">Date</th>
+                    <th style="width: 200px;">Description</th>
+                    <th style="width: 120px;">Income</th>
+                    <th style="width: 120px;">Expense</th>
+                    <th style="width: 120px;">Balance</th>
+                    <th style="width: 180px;">Approved By</th>
+                    <th style="width: 150px;">Type Movement</th>
+                    <th style="width: 150px;">Category</th>
+                    <th style="width: 80px;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="transactionTable">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let transactions = [];
+        let currentMonth = '';
+        let currentYear = 2026;
+
+        // Format number with commas
+        function formatNumber(num) {
+            if (!num || num === 0) return '';
+            const number = parseFloat(num);
+            return number.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // Parse number removing commas
+        function parseNumber(str) {
+            if (!str || str === '') return 0;
+            return parseFloat(str.toString().replace(/,/g, '')) || 0;
+        }
+
+        // Load data from localStorage
+        window.onload = function() {
+            // Set current month/year
+            const today = new Date();
+            currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+            currentYear = today.getFullYear();
+
+            document.getElementById('monthSelector').value = currentMonth;
+            document.getElementById('yearSelector').value = currentYear;
+
+            loadMonthData();
+        };
+
+        function getCurrentKey() {
+            return `cashControl_${currentYear}_${currentMonth}`;
+        }
+
+        function loadMonthData() {
+            const key = getCurrentKey();
+            const savedTransactions = localStorage.getItem(key);
+
+            if (savedTransactions) {
+                transactions = JSON.parse(savedTransactions);
+                renderTable();
+            } else {
+                transactions = [];
+                addNewRow();
+            }
+        }
+
+        function saveData() {
+            const key = getCurrentKey();
+            localStorage.setItem(key, JSON.stringify(transactions));
+            // Also save to global key for backwards compatibility with weekly/monthly summaries
+            localStorage.setItem('cashControlTransactions', JSON.stringify(transactions));
+        }
+
+        function changeMonth() {
+            currentMonth = document.getElementById('monthSelector').value;
+            currentYear = parseInt(document.getElementById('yearSelector').value);
+            loadMonthData();
+        }
+
+        function downloadExcel() {
+            if (transactions.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            // Prepare data for Excel
+            const excelData = transactions.map(t => ({
+                'Date': t.date,
+                'Description': t.description,
+                'Income': t.income > 0 ? t.income : '',
+                'Expense': t.expense > 0 ? t.expense : '',
+                'Balance': t.balance,
+                'Approved By': t.approvedBy,
+                'Type Movement': t.typeMovement,
+                'Category': t.category
+            }));
+
+            // Create worksheet
+            const ws = XLSX.utils.json_to_sheet(excelData);
+
+            // Set column widths
+            ws['!cols'] = [
+                {wch: 12}, // Date
+                {wch: 30}, // Description
+                {wch: 12}, // Income
+                {wch: 12}, // Expense
+                {wch: 12}, // Balance
+                {wch: 20}, // Approved By
+                {wch: 15}, // Type Movement
+                {wch: 30}  // Category
+            ];
+
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+
+            // Add Monthly Summary sheet
+            const monthlyData = localStorage.getItem('monthlyControlData');
+            if (monthlyData) {
+                const data = JSON.parse(monthlyData);
+                const summaryData = [];
+
+                // Header
+                summaryData.push(['Category', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Monthly Total']);
+
+                // Income section
+                summaryData.push(['INCOME']);
+                const incomeCategories = ['INCOME / SALES', 'RETURN', 'RETURN PAYROLL / SEVERANCE / BENEFITS', 'TRANSFERS FROM TJ'];
+                let weeklyIncomeTotals = [0, 0, 0, 0, 0];
+
+                incomeCategories.forEach(category => {
+                    const row = [category];
+                    let monthlyTotal = 0;
+                    for (let i = 0; i < 5; i++) {
+                        const weekTotal = data.weeks[i].income[category] ?
+                            data.weeks[i].income[category].reduce((sum, val) => sum + val, 0) : 0;
+                        monthlyTotal += weekTotal;
+                        weeklyIncomeTotals[i] += weekTotal;
+                        row.push(weekTotal);
+                    }
+                    row.push(monthlyTotal);
+                    summaryData.push(row);
+                });
+
+                // Total Inflows
+                const inflowRow = ['Total Inflows'];
+                let grandTotalIncome = 0;
+                for (let i = 0; i < 5; i++) {
+                    grandTotalIncome += weeklyIncomeTotals[i];
+                    inflowRow.push(weeklyIncomeTotals[i]);
+                }
+                inflowRow.push(grandTotalIncome);
+                summaryData.push(inflowRow);
+
+                // Expense section
+                summaryData.push(['EXPENSES']);
+                const expenseCategories = ['DIESEL POWER GENERATOR', 'DIESEL TRUCKS / BUSES / TRACTORS', 'EMPLOYEE MEALS',
+                    'GASOLINE', 'GENERAL PURCHASES / SUPPLIES', 'LOANS', 'PAYROLL / SEVERANCE / BENEFITS',
+                    'REIMBURSEMENTS / RETURNS', 'SERVICES', 'OTHER'];
+                let weeklyExpenseTotals = [0, 0, 0, 0, 0];
+
+                expenseCategories.forEach(category => {
+                    const row = [category];
+                    let monthlyTotal = 0;
+                    for (let i = 0; i < 5; i++) {
+                        const weekTotal = data.weeks[i].expense[category] ?
+                            data.weeks[i].expense[category].reduce((sum, val) => sum + val, 0) : 0;
+                        monthlyTotal += weekTotal;
+                        weeklyExpenseTotals[i] += weekTotal;
+                        row.push(weekTotal);
+                    }
+                    row.push(monthlyTotal);
+                    summaryData.push(row);
+                });
+
+                // Total Outflows
+                const outflowRow = ['Total Outflows'];
+                let grandTotalExpense = 0;
+                for (let i = 0; i < 5; i++) {
+                    grandTotalExpense += weeklyExpenseTotals[i];
+                    outflowRow.push(weeklyExpenseTotals[i]);
+                }
+                outflowRow.push(grandTotalExpense);
+                summaryData.push(outflowRow);
+
+                // Net Change
+                const netRow = ['Net Change'];
+                let monthlyNetChange = 0;
+                for (let i = 0; i < 5; i++) {
+                    const weekNetChange = weeklyIncomeTotals[i] - weeklyExpenseTotals[i];
+                    monthlyNetChange += weekNetChange;
+                    netRow.push(weekNetChange);
+                }
+                netRow.push(monthlyNetChange);
+                summaryData.push(netRow);
+
+                const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+                wsSummary['!cols'] = [{wch: 35}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}];
+                XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Summary');
+            }
+
+            // Generate filename
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                               'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            const monthName = monthNames[parseInt(currentMonth) - 1];
+            const filename = `Cash_Control_${monthName}_${currentYear}.xlsx`;
+
+            // Download
+            XLSX.writeFile(wb, filename);
+        }
+
+        function getTodayDate() {
+            const today = new Date();
+            return today.toISOString().split('T')[0];
+        }
+
+        function addNewRow() {
+            // Calculate the balance for the new row
+            let previousBalance = 0;
+            if (transactions.length > 0) {
+                previousBalance = transactions[transactions.length - 1].balance;
+            }
+
+            const transaction = {
+                date: getTodayDate(),
+                description: '',
+                income: 0,
+                expense: 0,
+                balance: previousBalance,
+                approvedBy: '',
+                typeMovement: '',
+                category: ''
+            };
+            transactions.push(transaction);
+            renderTable();
+            saveData();
+        }
+
+        function getCategoryOptions(typeMovement, selectedCategory) {
+            let options = '<option value="">Seleccionar...</option>';
+
+            if (typeMovement === 'Income') {
+                const incomeCategories = [
+                    'INCOME / SALES',
+                    'RETURN',
+                    'RETURN PAYROLL / SEVERANCE / BENEFITS',
+                    'TRANSFERS FROM TJ'
+                ];
+                incomeCategories.forEach(cat => {
+                    const selected = cat === selectedCategory ? 'selected' : '';
+                    options += `<option value="${cat}" ${selected}>${cat}</option>`;
+                });
+            } else if (typeMovement === 'Expense') {
+                const expenseCategories = [
+                    'DIESEL POWER GENERATOR',
+                    'DIESEL TRUCKS / BUSES / TRACTORS',
+                    'EMPLOYEE MEALS',
+                    'GASOLINE',
+                    'GENERAL PURCHASES / SUPPLIES',
+                    'LOANS',
+                    'PAYROLL / SEVERANCE / BENEFITS',
+                    'REIMBURSEMENTS / RETURNS',
+                    'SERVICES',
+                    'OTHER'
+                ];
+                expenseCategories.forEach(cat => {
+                    const selected = cat === selectedCategory ? 'selected' : '';
+                    options += `<option value="${cat}" ${selected}>${cat}</option>`;
+                });
+            }
+
+            return options;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('transactionTable');
+            tbody.innerHTML = '';
+
+            transactions.forEach((transaction, index) => {
+                const row = tbody.insertRow();
+
+                // Date
+                const dateCell = row.insertCell();
+                dateCell.innerHTML = `<input type="date" value="${transaction.date}" onchange="updateTransaction(${index}, 'date', this.value)">`;
+
+                // Description
+                const descCell = row.insertCell();
+                descCell.innerHTML = `<input type="text" value="${transaction.description}" onchange="updateTransaction(${index}, 'description', this.value)" placeholder="Descripción...">`;
+
+                // Income
+                const incomeCell = row.insertCell();
+                incomeCell.className = 'income-cell';
+                const incomeValue = transaction.income > 0 ? formatNumber(transaction.income) : '';
+                incomeCell.innerHTML = `<input type="text" value="${incomeValue}" onchange="updateTransaction(${index}, 'income', this.value)" onfocus="this.select()" placeholder="0.00">`;
+
+                // Expense
+                const expenseCell = row.insertCell();
+                expenseCell.className = 'expense-cell';
+                const expenseValue = transaction.expense > 0 ? formatNumber(transaction.expense) : '';
+                expenseCell.innerHTML = `<input type="text" value="${expenseValue}" onchange="updateTransaction(${index}, 'expense', this.value)" onfocus="this.select()" placeholder="0.00">`;
+
+                // Balance (now editable)
+                const balanceCell = row.insertCell();
+                balanceCell.className = 'balance-cell';
+                balanceCell.innerHTML = `<input type="text" value="${formatNumber(transaction.balance)}" onchange="updateBalance(${index}, this.value)" onfocus="this.select()" placeholder="0.00">`;
+
+                // Approved By
+                const approvedCell = row.insertCell();
+                approvedCell.innerHTML = `
+                    <select onchange="updateTransaction(${index}, 'approvedBy', this.value)">
+                        <option value="">Seleccionar...</option>
+                        <option value="Amir Tafreshi" ${transaction.approvedBy === 'Amir Tafreshi' ? 'selected' : ''}>Amir Tafreshi</option>
+                        <option value="Giri Chandresema" ${transaction.approvedBy === 'Giri Chandresema' ? 'selected' : ''}>Giri Chandresema</option>
+                        <option value="Juan Diaz" ${transaction.approvedBy === 'Juan Diaz' ? 'selected' : ''}>Juan Diaz</option>
+                        <option value="Elthon" ${transaction.approvedBy === 'Elthon' ? 'selected' : ''}>Elthon</option>
+                        <option value="Gabriela Herrera" ${transaction.approvedBy === 'Gabriela Herrera' ? 'selected' : ''}>Gabriela Herrera</option>
+                    </select>
+                `;
+
+                // Type Movement
+                const typeCell = row.insertCell();
+                typeCell.innerHTML = `
+                    <select onchange="updateTransaction(${index}, 'typeMovement', this.value)">
+                        <option value="">Seleccionar...</option>
+                        <option value="Income" ${transaction.typeMovement === 'Income' ? 'selected' : ''}>Income</option>
+                        <option value="Expense" ${transaction.typeMovement === 'Expense' ? 'selected' : ''}>Expense</option>
+                    </select>
+                `;
+
+                // Category
+                const categoryCell = row.insertCell();
+                const categoryOptions = getCategoryOptions(transaction.typeMovement, transaction.category);
+                categoryCell.innerHTML = `
+                    <select onchange="updateTransaction(${index}, 'category', this.value)">
+                        ${categoryOptions}
+                    </select>
+                `;
+
+                // Action
+                const actionCell = row.insertCell();
+                actionCell.innerHTML = `<button class="delete-btn" onclick="deleteTransaction(${index})">Delete</button>`;
+            });
+        }
+
+        function updateTransaction(index, field, value) {
+            if (field === 'income') {
+                const numValue = parseNumber(value);
+                transactions[index].income = numValue;
+                if (numValue > 0) {
+                    transactions[index].expense = 0;
+                    transactions[index].typeMovement = 'Income';
+                }
+            } else if (field === 'expense') {
+                const numValue = parseNumber(value);
+                transactions[index].expense = numValue;
+                if (numValue > 0) {
+                    transactions[index].income = 0;
+                    transactions[index].typeMovement = 'Expense';
+                }
+            } else {
+                transactions[index][field] = value;
+            }
+
+            recalculateBalancesFromIndex(index);
+            saveData();
+            renderTable();
+        }
+
+        function updateBalance(index, value) {
+            const numValue = parseNumber(value);
+            transactions[index].balance = numValue;
+
+            // Recalculate subsequent balances
+            recalculateBalancesFromIndex(index);
+            saveData();
+            renderTable();
+        }
+
+        function recalculateBalancesFromIndex(startIndex) {
+            // Recalculate balance for the current row
+            if (startIndex > 0) {
+                const prevBalance = transactions[startIndex - 1].balance;
+                transactions[startIndex].balance = prevBalance + transactions[startIndex].income - transactions[startIndex].expense;
+            } else {
+                // For first row, balance = existing balance + income - expense
+                const currentBalance = transactions[startIndex].balance;
+                const currentIncome = transactions[startIndex].income;
+                const currentExpense = transactions[startIndex].expense;
+
+                // If income or expense changed, adjust the balance
+                if (currentIncome > 0 || currentExpense > 0) {
+                    // Calculate what the starting balance should be
+                    const startingBalance = currentBalance - currentIncome + currentExpense;
+                    transactions[startIndex].balance = startingBalance + currentIncome - currentExpense;
+                }
+            }
+
+            // Recalculate all subsequent rows
+            for (let i = startIndex + 1; i < transactions.length; i++) {
+                const prevBalance = transactions[i - 1].balance;
+                transactions[i].balance = prevBalance + transactions[i].income - transactions[i].expense;
+            }
+        }
+
+        function deleteTransaction(index) {
+            if (confirm('¿Estás seguro de eliminar esta transacción?')) {
+                transactions.splice(index, 1);
+
+                // Recalculate all balances from the deletion point
+                if (transactions.length > 0 && index < transactions.length) {
+                    recalculateBalancesFromIndex(index);
+                }
+
+                saveData();
+                renderTable();
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + Enter to add new row
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                addNewRow();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Cash Control Summary</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        }
+        .button-group {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .month-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            font-size: 12px;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 8px 10px;
+            text-align: right;
+        }
+        th {
+            background-color: #34495e;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-size: 11px;
+            position: sticky;
+            top: 0;
+        }
+        td:first-child, th:first-child {
+            text-align: left;
+            font-weight: 600;
+            background-color: #ecf0f1;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            color: #2c3e50;
+        }
+        th:first-child {
+            z-index: 2;
+            background-color: #2c3e50;
+        }
+        .income-section {
+            background-color: #eafaf1;
+        }
+        .total-inflows {
+            background-color: #aed6f1;
+            font-weight: 600;
+        }
+        .expense-section {
+            background-color: #fef5e7;
+        }
+        .total-outflows {
+            background-color: #f5b7b1;
+            font-weight: 600;
+        }
+        .net-change {
+            background-color: #d5dbdb;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        .total-column {
+            background-color: #95a5a6;
+            font-weight: 700;
+            color: white;
+        }
+        .section-header {
+            background-color: #34495e;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        button {
+            background-color: #34495e;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        button:hover {
+            background-color: #2c3e50;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Monthly Cash Control Summary</h1>
+
+        <div class="button-group">
+            <button onclick="window.location.href='cash_control.html'">← Volver a Cash Control</button>
+            <button onclick="window.location.href='weekly_summary.html'">📅 Ver Resumen Semanal</button>
+            <button onclick="loadMonthlySummary()">🔄 Actualizar Resumen</button>
+            <button onclick="downloadExcel()" style="background-color: #27ae60;">📥 Descargar Excel</button>
+        </div>
+
+        <div class="month-info">
+            <span id="monthDisplay">January 2026</span>
+        </div>
+
+        <table id="monthlyTable">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Week 1</th>
+                    <th>Week 2</th>
+                    <th>Week 3</th>
+                    <th>Week 4</th>
+                    <th>Week 5</th>
+                    <th class="total-column">Monthly Total</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let monthData = null;
+
+        window.onload = function() {
+            loadMonthlySummary();
+        };
+
+        function loadMonthlySummary() {
+            const savedData = localStorage.getItem('monthlyControlData');
+            if (!savedData) {
+                alert('No hay datos de resumen semanal. Por favor, configure sus semanas primero.');
+                return;
+            }
+
+            monthData = JSON.parse(savedData);
+            document.getElementById('monthDisplay').textContent = `${monthData.month} ${monthData.year}`;
+            renderMonthlySummary();
+        }
+
+        function calculateWeekTotal(weekData, category, type) {
+            let total = 0;
+            if (type === 'income' && weekData.income[category]) {
+                total = weekData.income[category].reduce((sum, val) => sum + val, 0);
+            } else if (type === 'expense' && weekData.expense[category]) {
+                total = weekData.expense[category].reduce((sum, val) => sum + val, 0);
+            }
+            return total;
+        }
+
+        function renderMonthlySummary() {
+            const tbody = document.getElementById('tableBody');
+            let html = '';
+
+            // Income section header
+            html += '<tr class="section-header"><td colspan="7">INCOME</td></tr>';
+
+            // Income categories
+            const incomeCategories = [
+                'INCOME / SALES',
+                'RETURN',
+                'RETURN PAYROLL / SEVERANCE / BENEFITS',
+                'TRANSFERS FROM TJ'
+            ];
+
+            let weeklyIncomeTotals = [0, 0, 0, 0, 0];
+            incomeCategories.forEach(category => {
+                html += `<tr class="income-section"><td>${category}</td>`;
+                let monthlyTotal = 0;
+                for (let i = 0; i < 5; i++) {
+                    const weekTotal = calculateWeekTotal(monthData.weeks[i], category, 'income');
+                    monthlyTotal += weekTotal;
+                    weeklyIncomeTotals[i] += weekTotal;
+                    html += `<td>${weekTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+                }
+                html += `<td class="total-column">${monthlyTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+            });
+
+            // Total Inflows
+            html += '<tr class="total-inflows"><td>Total Inflows</td>';
+            let grandTotalIncome = 0;
+            for (let i = 0; i < 5; i++) {
+                grandTotalIncome += weeklyIncomeTotals[i];
+                html += `<td>${weeklyIncomeTotals[i].toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+            }
+            html += `<td class="total-column">${grandTotalIncome.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+
+            // Expense section header
+            html += '<tr class="section-header"><td colspan="7">EXPENSES</td></tr>';
+
+            // Expense categories
+            const expenseCategories = [
+                'DIESEL POWER GENERATOR',
+                'DIESEL TRUCKS / BUSES / TRACTORS',
+                'EMPLOYEE MEALS',
+                'GASOLINE',
+                'GENERAL PURCHASES / SUPPLIES',
+                'LOANS',
+                'PAYROLL / SEVERANCE / BENEFITS',
+                'REIMBURSEMENTS / RETURNS',
+                'SERVICES',
+                'OTHER'
+            ];
+
+            let weeklyExpenseTotals = [0, 0, 0, 0, 0];
+            expenseCategories.forEach(category => {
+                html += `<tr class="expense-section"><td>${category}</td>`;
+                let monthlyTotal = 0;
+                for (let i = 0; i < 5; i++) {
+                    const weekTotal = calculateWeekTotal(monthData.weeks[i], category, 'expense');
+                    monthlyTotal += weekTotal;
+                    weeklyExpenseTotals[i] += weekTotal;
+                    html += `<td>${weekTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+                }
+                html += `<td class="total-column">${monthlyTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+            });
+
+            // Total Outflows
+            html += '<tr class="total-outflows"><td>Total Outflows</td>';
+            let grandTotalExpense = 0;
+            for (let i = 0; i < 5; i++) {
+                grandTotalExpense += weeklyExpenseTotals[i];
+                html += `<td>${weeklyExpenseTotals[i].toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+            }
+            html += `<td class="total-column">${grandTotalExpense.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+
+            // Net Change
+            html += '<tr class="net-change"><td>Net Change (Income - Expenses)</td>';
+            let monthlyNetChange = 0;
+            for (let i = 0; i < 5; i++) {
+                const weekNetChange = weeklyIncomeTotals[i] - weeklyExpenseTotals[i];
+                monthlyNetChange += weekNetChange;
+                html += `<td>${weekNetChange.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+            }
+            html += `<td class="total-column">${monthlyNetChange.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+
+            tbody.innerHTML = html;
+        }
+
+        function downloadExcel() {
+            if (!monthData || monthData.weeks.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            const excelData = [];
+
+            // Header
+            excelData.push(['Category', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Monthly Total']);
+
+            // Income section
+            excelData.push(['INCOME']);
+
+            const incomeCategories = [
+                'INCOME / SALES',
+                'RETURN',
+                'RETURN PAYROLL / SEVERANCE / BENEFITS',
+                'TRANSFERS FROM TJ'
+            ];
+
+            let weeklyIncomeTotals = [0, 0, 0, 0, 0];
+            incomeCategories.forEach(category => {
+                const row = [category];
+                let monthlyTotal = 0;
+                for (let i = 0; i < 5; i++) {
+                    const weekTotal = calculateWeekTotal(monthData.weeks[i], category, 'income');
+                    monthlyTotal += weekTotal;
+                    weeklyIncomeTotals[i] += weekTotal;
+                    row.push(weekTotal);
+                }
+                row.push(monthlyTotal);
+                excelData.push(row);
+            });
+
+            // Total Inflows
+            const inflowRow = ['Total Inflows'];
+            let grandTotalIncome = 0;
+            for (let i = 0; i < 5; i++) {
+                grandTotalIncome += weeklyIncomeTotals[i];
+                inflowRow.push(weeklyIncomeTotals[i]);
+            }
+            inflowRow.push(grandTotalIncome);
+            excelData.push(inflowRow);
+
+            // Expense section
+            excelData.push(['EXPENSES']);
+
+            const expenseCategories = [
+                'DIESEL POWER GENERATOR',
+                'DIESEL TRUCKS / BUSES / TRACTORS',
+                'EMPLOYEE MEALS',
+                'GASOLINE',
+                'GENERAL PURCHASES / SUPPLIES',
+                'LOANS',
+                'PAYROLL / SEVERANCE / BENEFITS',
+                'REIMBURSEMENTS / RETURNS',
+                'SERVICES',
+                'OTHER'
+            ];
+
+            let weeklyExpenseTotals = [0, 0, 0, 0, 0];
+            expenseCategories.forEach(category => {
+                const row = [category];
+                let monthlyTotal = 0;
+                for (let i = 0; i < 5; i++) {
+                    const weekTotal = calculateWeekTotal(monthData.weeks[i], category, 'expense');
+                    monthlyTotal += weekTotal;
+                    weeklyExpenseTotals[i] += weekTotal;
+                    row.push(weekTotal);
+                }
+                row.push(monthlyTotal);
+                excelData.push(row);
+            });
+
+            // Total Outflows
+            const outflowRow = ['Total Outflows'];
+            let grandTotalExpense = 0;
+            for (let i = 0; i < 5; i++) {
+                grandTotalExpense += weeklyExpenseTotals[i];
+                outflowRow.push(weeklyExpenseTotals[i]);
+            }
+            outflowRow.push(grandTotalExpense);
+            excelData.push(outflowRow);
+
+            // Net Change
+            const netRow = ['Net Change (Income - Expenses)'];
+            let monthlyNetChange = 0;
+            for (let i = 0; i < 5; i++) {
+                const weekNetChange = weeklyIncomeTotals[i] - weeklyExpenseTotals[i];
+                monthlyNetChange += weekNetChange;
+                netRow.push(weekNetChange);
+            }
+            netRow.push(monthlyNetChange);
+            excelData.push(netRow);
+
+            // Create worksheet
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            ws['!cols'] = [{wch: 35}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}];
+
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Monthly Summary');
+
+            // Add detailed transactions sheet
+            const transactions = localStorage.getItem('cashControlTransactions');
+            if (transactions) {
+                const transactionsData = JSON.parse(transactions);
+                if (transactionsData.length > 0) {
+                    const transExcelData = transactionsData.map(t => ({
+                        'Date': t.date,
+                        'Description': t.description,
+                        'Income': t.income || '',
+                        'Expense': t.expense || '',
+                        'Balance': t.balance,
+                        'Approved By': t.approvedBy,
+                        'Type Movement': t.typeMovement,
+                        'Category': t.category
+                    }));
+                    const wsTransactions = XLSX.utils.json_to_sheet(transExcelData);
+                    wsTransactions['!cols'] = [
+                        {wch: 12}, {wch: 30}, {wch: 12}, {wch: 12},
+                        {wch: 12}, {wch: 20}, {wch: 15}, {wch: 30}
+                    ];
+                    XLSX.utils.book_append_sheet(wb, wsTransactions, 'Transactions');
+                }
+            }
+
+            // Download
+            const filename = `Monthly_Summary_${monthData.month}_${monthData.year}.xlsx`;
+            XLSX.writeFile(wb, filename);
+        }
+    </script>
+</body>
+</html>

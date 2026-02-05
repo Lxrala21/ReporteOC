@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Cash Control Summary</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        }
+        .button-group {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #ecf0f1;
+            border: none;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #5d6d7e;
+            transition: all 0.3s ease;
+        }
+        .tab:hover {
+            background-color: #d5dbdb;
+        }
+        .tab.active {
+            background-color: #34495e;
+            color: white;
+        }
+        .week-info {
+            background-color: #f8f9fa;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            border: 1px solid #e0e0e0;
+            font-size: 12px;
+        }
+        .week-content {
+            display: none;
+        }
+        .week-content.active {
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            font-size: 11px;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 6px 8px;
+            text-align: right;
+            font-size: 11px;
+        }
+        th {
+            background-color: #34495e;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-size: 10px;
+            position: sticky;
+            top: 0;
+            padding: 8px 8px;
+        }
+        td:first-child, th:first-child {
+            text-align: left;
+            font-weight: 600;
+            background-color: #ecf0f1;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            color: #2c3e50;
+            font-size: 11px;
+        }
+        th:first-child {
+            z-index: 2;
+            background-color: #2c3e50;
+        }
+        .date-row {
+            background-color: #d5dbdb;
+            font-weight: 600;
+        }
+        .day-row {
+            background-color: #e8eaed;
+            font-style: italic;
+        }
+        .beginning-balance {
+            background-color: #d6eaf8;
+            font-weight: 600;
+        }
+        .income-section {
+            background-color: #eafaf1;
+        }
+        .total-inflows {
+            background-color: #aed6f1;
+            font-weight: 600;
+        }
+        .expense-section {
+            background-color: #fef5e7;
+        }
+        .total-outflows {
+            background-color: #f5b7b1;
+            font-weight: 600;
+        }
+        .ending-balance {
+            background-color: #a9dfbf;
+            font-weight: 600;
+        }
+        input[type="number"], input[type="date"], input[type="text"] {
+            width: 100%;
+            border: none;
+            padding: 4px;
+            text-align: right;
+            background: transparent;
+            box-sizing: border-box;
+            color: #2c3e50;
+            font-size: 11px;
+        }
+        input[type="text"].text-left {
+            text-align: left;
+        }
+        td:nth-child(n+2) input[type="text"] {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+        input:focus {
+            outline: 2px solid #5d6d7e;
+            background-color: #f8f9fa;
+        }
+        .total-column {
+            background-color: #bdc3c7;
+            font-weight: 600;
+        }
+        .section-header {
+            background-color: #34495e;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-size: 12px;
+        }
+        button {
+            background-color: #34495e;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        button:hover {
+            background-color: #2c3e50;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Weekly Cash Control Summary</h1>
+
+        <div class="button-group">
+            <button onclick="window.location.href='cash_control.html'">← Volver a Cash Control</button>
+            <button onclick="syncAllWeeks(); renderAllTables();">🔄 Sincronizar Datos</button>
+            <button onclick="window.location.href='monthly_summary.html'" style="background-color: #5d6d7e;">📊 Ver Resumen Mensual</button>
+            <button onclick="downloadExcel()" style="background-color: #27ae60;">📥 Descargar Excel</button>
+        </div>
+
+        <div class="week-info">
+            <div>
+                <strong>Month:</strong> <input type="text" id="monthName" value="January" style="width: 100px; text-align: center;" onchange="saveAllData()">
+            </div>
+            <div>
+                <strong>Year:</strong> <input type="number" id="yearNumber" value="2026" style="width: 80px; text-align: center;" onchange="saveAllData()">
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchWeek(1)">Week 1</button>
+            <button class="tab" onclick="switchWeek(2)">Week 2</button>
+            <button class="tab" onclick="switchWeek(3)">Week 3</button>
+            <button class="tab" onclick="switchWeek(4)">Week 4</button>
+            <button class="tab" onclick="switchWeek(5)">Week 5</button>
+        </div>
+
+        <div id="week1" class="week-content active">
+            <table id="summaryTable1"></table>
+        </div>
+        <div id="week2" class="week-content">
+            <table id="summaryTable2"></table>
+        </div>
+        <div id="week3" class="week-content">
+            <table id="summaryTable3"></table>
+        </div>
+        <div id="week4" class="week-content">
+            <table id="summaryTable4"></table>
+        </div>
+        <div id="week5" class="week-content">
+            <table id="summaryTable5"></table>
+        </div>
+    </div>
+
+    <script>
+        let currentWeek = 1;
+        let monthData = {
+            month: 'January',
+            year: 2026,
+            weeks: []
+        };
+
+        // Format number with commas
+        function formatNumber(num) {
+            if (!num || num === 0) return '';
+            const number = parseFloat(num);
+            return number.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // Parse number removing commas
+        function parseNumber(str) {
+            if (!str || str === '') return 0;
+            return parseFloat(str.toString().replace(/,/g, '')) || 0;
+        }
+
+        // Initialize 5 weeks
+        for (let i = 0; i < 5; i++) {
+            monthData.weeks.push({
+                weekNumber: i + 1,
+                days: [
+                    { date: '', dayOfWeek: '', beginningBalance: 0 },
+                    { date: '', dayOfWeek: '', beginningBalance: 0 },
+                    { date: '', dayOfWeek: '', beginningBalance: 0 },
+                    { date: '', dayOfWeek: '', beginningBalance: 0 },
+                    { date: '', dayOfWeek: '', beginningBalance: 0 }
+                ],
+                income: {
+                    'INCOME / SALES': [0, 0, 0, 0, 0],
+                    'RETURN': [0, 0, 0, 0, 0],
+                    'RETURN PAYROLL / SEVERANCE / BENEFITS': [0, 0, 0, 0, 0],
+                    'TRANSFERS FROM TJ': [0, 0, 0, 0, 0]
+                },
+                expense: {
+                    'DIESEL POWER GENERATOR': [0, 0, 0, 0, 0],
+                    'DIESEL TRUCKS / BUSES / TRACTORS': [0, 0, 0, 0, 0],
+                    'EMPLOYEE MEALS': [0, 0, 0, 0, 0],
+                    'GASOLINE': [0, 0, 0, 0, 0],
+                    'GENERAL PURCHASES / SUPPLIES': [0, 0, 0, 0, 0],
+                    'LOANS': [0, 0, 0, 0, 0],
+                    'PAYROLL / SEVERANCE / BENEFITS': [0, 0, 0, 0, 0],
+                    'REIMBURSEMENTS / RETURNS': [0, 0, 0, 0, 0],
+                    'SERVICES': [0, 0, 0, 0, 0],
+                    'OTHER': [0, 0, 0, 0, 0]
+                }
+            });
+        }
+
+        window.onload = function() {
+            const savedData = localStorage.getItem('monthlyControlData');
+            if (savedData) {
+                monthData = JSON.parse(savedData);
+                document.getElementById('monthName').value = monthData.month;
+                document.getElementById('yearNumber').value = monthData.year;
+            }
+            syncAllWeeks();
+            renderAllTables();
+        };
+
+        function saveAllData() {
+            monthData.month = document.getElementById('monthName').value;
+            monthData.year = parseInt(document.getElementById('yearNumber').value);
+            localStorage.setItem('monthlyControlData', JSON.stringify(monthData));
+        }
+
+        function switchWeek(weekNumber) {
+            currentWeek = weekNumber;
+
+            // Update tabs
+            document.querySelectorAll('.tab').forEach((tab, index) => {
+                tab.classList.toggle('active', index + 1 === weekNumber);
+            });
+
+            // Update content
+            document.querySelectorAll('.week-content').forEach((content, index) => {
+                content.classList.toggle('active', index + 1 === weekNumber);
+            });
+        }
+
+        function syncAllWeeks() {
+            const transactions = localStorage.getItem('cashControlTransactions');
+            if (!transactions) return;
+
+            const cashControlData = JSON.parse(transactions);
+
+            for (let weekIndex = 0; weekIndex < 5; weekIndex++) {
+                const weekData = monthData.weeks[weekIndex];
+
+                for (let dayIndex = 0; dayIndex < 5; dayIndex++) {
+                    const date = weekData.days[dayIndex].date;
+                    if (!date) continue;
+
+                    // Reset values
+                    for (let category in weekData.income) {
+                        weekData.income[category][dayIndex] = 0;
+                    }
+                    for (let category in weekData.expense) {
+                        weekData.expense[category][dayIndex] = 0;
+                    }
+
+                    // Sum transactions
+                    cashControlData.forEach(transaction => {
+                        if (transaction.date === date) {
+                            const category = transaction.category;
+
+                            if (transaction.income > 0 && weekData.income[category] !== undefined) {
+                                weekData.income[category][dayIndex] += transaction.income;
+                            }
+
+                            if (transaction.expense > 0 && weekData.expense[category] !== undefined) {
+                                weekData.expense[category][dayIndex] += transaction.expense;
+                            }
+                        }
+                    });
+
+                    // Calculate next day's beginning balance
+                    if (dayIndex < 4) {
+                        const totalInflows = Object.values(weekData.income).reduce((sum, arr) => sum + arr[dayIndex], 0);
+                        const totalOutflows = Object.values(weekData.expense).reduce((sum, arr) => sum + arr[dayIndex], 0);
+                        weekData.days[dayIndex + 1].beginningBalance = weekData.days[dayIndex].beginningBalance + totalInflows - totalOutflows;
+                    }
+                }
+            }
+
+            saveAllData();
+        }
+
+        function renderAllTables() {
+            for (let i = 1; i <= 5; i++) {
+                renderTable(i);
+            }
+        }
+
+        function updateValue(weekIndex, category, dayIndex, value) {
+            const weekData = monthData.weeks[weekIndex - 1];
+            const numValue = parseNumber(value);
+
+            if (category === 'date') {
+                weekData.days[dayIndex].date = value;
+                syncAllWeeks();
+            } else if (category === 'dayOfWeek') {
+                weekData.days[dayIndex].dayOfWeek = value;
+            } else if (category === 'beginningBalance') {
+                weekData.days[dayIndex].beginningBalance = numValue;
+            } else if (weekData.income[category]) {
+                weekData.income[category][dayIndex] = numValue;
+            } else if (weekData.expense[category]) {
+                weekData.expense[category][dayIndex] = numValue;
+            }
+
+            saveAllData();
+            renderTable(weekIndex);
+        }
+
+        function calculateTotal(array) {
+            return array.reduce((sum, val) => sum + val, 0);
+        }
+
+        function renderTable(weekNumber) {
+            const weekData = monthData.weeks[weekNumber - 1];
+            const table = document.getElementById('summaryTable' + weekNumber);
+
+            let html = '<thead><tr><th>Category</th><th>Day 1</th><th>Day 2</th><th>Day 3</th><th>Day 4</th><th>Day 5</th><th class="total-column">Total</th></tr></thead><tbody>';
+
+            // Date row
+            html += '<tr class="date-row"><td>Date:</td>';
+            for (let i = 0; i < 5; i++) {
+                html += `<td><input type="date" value="${weekData.days[i].date}" onchange="updateValue(${weekNumber}, 'date', ${i}, this.value)"></td>`;
+            }
+            html += '<td></td></tr>';
+
+            // Day of Week row
+            html += '<tr class="day-row"><td>Day of Week</td>';
+            for (let i = 0; i < 5; i++) {
+                html += `<td><input type="text" class="text-left" value="${weekData.days[i].dayOfWeek}" onchange="updateValue(${weekNumber}, 'dayOfWeek', ${i}, this.value)" placeholder="Monday"></td>`;
+            }
+            html += '<td></td></tr>';
+
+            // Beginning Balance
+            html += '<tr class="beginning-balance"><td>Beginning Balance</td>';
+            for (let i = 0; i < 5; i++) {
+                const balValue = formatNumber(weekData.days[i].beginningBalance);
+                html += `<td><input type="text" value="${balValue}" onchange="updateValue(${weekNumber}, 'beginningBalance', ${i}, this.value)" onfocus="this.select()"></td>`;
+            }
+            const totalBeginningBalance = weekData.days[0].beginningBalance;
+            html += `<td class="total-column">${totalBeginningBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+
+            // Income section
+            html += '<tr class="section-header"><td colspan="7">INCOME</td></tr>';
+            let totalInflowsByDay = [0, 0, 0, 0, 0];
+            for (let category in weekData.income) {
+                html += `<tr class="income-section"><td>${category}</td>`;
+                for (let i = 0; i < 5; i++) {
+                    const value = weekData.income[category][i];
+                    const formattedValue = value > 0 ? formatNumber(value) : '';
+                    html += `<td><input type="text" value="${formattedValue}" onchange="updateValue(${weekNumber}, '${category}', ${i}, this.value)" onfocus="this.select()" placeholder="0.00"></td>`;
+                    totalInflowsByDay[i] += value;
+                }
+                const categoryTotal = calculateTotal(weekData.income[category]);
+                html += `<td class="total-column">${categoryTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+            }
+
+            // Total Inflows
+            html += '<tr class="total-inflows"><td>Total Inflows</td>';
+            for (let i = 0; i < 5; i++) {
+                html += `<td>${totalInflowsByDay[i].toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+            }
+            const grandTotalInflows = calculateTotal(totalInflowsByDay);
+            html += `<td class="total-column">${grandTotalInflows.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+
+            // Expense section
+            html += '<tr class="section-header"><td colspan="7">EXPENSES</td></tr>';
+            let totalOutflowsByDay = [0, 0, 0, 0, 0];
+            for (let category in weekData.expense) {
+                html += `<tr class="expense-section"><td>${category}</td>`;
+                for (let i = 0; i < 5; i++) {
+                    const value = weekData.expense[category][i];
+                    const formattedValue = value > 0 ? formatNumber(value) : '';
+                    html += `<td><input type="text" value="${formattedValue}" onchange="updateValue(${weekNumber}, '${category}', ${i}, this.value)" onfocus="this.select()" placeholder="0.00"></td>`;
+                    totalOutflowsByDay[i] += value;
+                }
+                const categoryTotal = calculateTotal(weekData.expense[category]);
+                html += `<td class="total-column">${categoryTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+            }
+
+            // Total Outflows
+            html += '<tr class="total-outflows"><td>Total Outflows</td>';
+            for (let i = 0; i < 5; i++) {
+                html += `<td>${totalOutflowsByDay[i].toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+            }
+            const grandTotalOutflows = calculateTotal(totalOutflowsByDay);
+            html += `<td class="total-column">${grandTotalOutflows.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+
+            // Ending Balance
+            html += '<tr class="ending-balance"><td>Ending Balance</td>';
+            for (let i = 0; i < 5; i++) {
+                const endingBalance = weekData.days[i].beginningBalance + totalInflowsByDay[i] - totalOutflowsByDay[i];
+                html += `<td>${endingBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+            }
+            const finalBalance = weekData.days[4].beginningBalance + totalInflowsByDay[4] - totalOutflowsByDay[4];
+            html += `<td class="total-column">${finalBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
+
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        function downloadExcel() {
+            if (!monthData || monthData.weeks.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+
+            // Export each week as a separate sheet
+            for (let weekNum = 1; weekNum <= 5; weekNum++) {
+                const weekData = monthData.weeks[weekNum - 1];
+                const excelData = [];
+
+                // Header rows
+                excelData.push(['Category', 'Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Total']);
+
+                // Dates
+                const dateRow = ['Date:'];
+                for (let i = 0; i < 5; i++) {
+                    dateRow.push(weekData.days[i].date || '');
+                }
+                dateRow.push('');
+                excelData.push(dateRow);
+
+                // Days of week
+                const dowRow = ['Day of Week'];
+                for (let i = 0; i < 5; i++) {
+                    dowRow.push(weekData.days[i].dayOfWeek || '');
+                }
+                dowRow.push('');
+                excelData.push(dowRow);
+
+                // Beginning Balance
+                const balRow = ['Beginning Balance'];
+                for (let i = 0; i < 5; i++) {
+                    balRow.push(weekData.days[i].beginningBalance);
+                }
+                balRow.push(weekData.days[0].beginningBalance);
+                excelData.push(balRow);
+
+                // Income section
+                excelData.push(['INCOME']);
+                let totalInflowsByDay = [0, 0, 0, 0, 0];
+                for (let category in weekData.income) {
+                    const row = [category];
+                    for (let i = 0; i < 5; i++) {
+                        const value = weekData.income[category][i];
+                        row.push(value);
+                        totalInflowsByDay[i] += value;
+                    }
+                    row.push(weekData.income[category].reduce((sum, val) => sum + val, 0));
+                    excelData.push(row);
+                }
+
+                const inflowRow = ['Total Inflows'];
+                for (let i = 0; i < 5; i++) {
+                    inflowRow.push(totalInflowsByDay[i]);
+                }
+                inflowRow.push(totalInflowsByDay.reduce((sum, val) => sum + val, 0));
+                excelData.push(inflowRow);
+
+                // Expense section
+                excelData.push(['EXPENSES']);
+                let totalOutflowsByDay = [0, 0, 0, 0, 0];
+                for (let category in weekData.expense) {
+                    const row = [category];
+                    for (let i = 0; i < 5; i++) {
+                        const value = weekData.expense[category][i];
+                        row.push(value);
+                        totalOutflowsByDay[i] += value;
+                    }
+                    row.push(weekData.expense[category].reduce((sum, val) => sum + val, 0));
+                    excelData.push(row);
+                }
+
+                const outflowRow = ['Total Outflows'];
+                for (let i = 0; i < 5; i++) {
+                    outflowRow.push(totalOutflowsByDay[i]);
+                }
+                outflowRow.push(totalOutflowsByDay.reduce((sum, val) => sum + val, 0));
+                excelData.push(outflowRow);
+
+                // Ending Balance
+                const endRow = ['Ending Balance'];
+                for (let i = 0; i < 5; i++) {
+                    endRow.push(weekData.days[i].beginningBalance + totalInflowsByDay[i] - totalOutflowsByDay[i]);
+                }
+                const finalBalance = weekData.days[4].beginningBalance + totalInflowsByDay[4] - totalOutflowsByDay[4];
+                endRow.push(finalBalance);
+                excelData.push(endRow);
+
+                // Create worksheet
+                const ws = XLSX.utils.aoa_to_sheet(excelData);
+                ws['!cols'] = [{wch: 35}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}];
+
+                XLSX.utils.book_append_sheet(wb, ws, `Week ${weekNum}`);
+            }
+
+            // Add Monthly Summary sheet
+            const summaryData = [];
+            summaryData.push(['Category', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Monthly Total']);
+
+            // Income section
+            summaryData.push(['INCOME']);
+            const incomeCategories = ['INCOME / SALES', 'RETURN', 'RETURN PAYROLL / SEVERANCE / BENEFITS', 'TRANSFERS FROM TJ'];
+            let weeklyIncomeTotals = [0, 0, 0, 0, 0];
+
+            incomeCategories.forEach(category => {
+                const row = [category];
+                let monthlyTotal = 0;
+                for (let i = 0; i < 5; i++) {
+                    const weekTotal = monthData.weeks[i].income[category].reduce((sum, val) => sum + val, 0);
+                    monthlyTotal += weekTotal;
+                    weeklyIncomeTotals[i] += weekTotal;
+                    row.push(weekTotal);
+                }
+                row.push(monthlyTotal);
+                summaryData.push(row);
+            });
+
+            // Total Inflows
+            const inflowRow = ['Total Inflows'];
+            let grandTotalIncome = 0;
+            for (let i = 0; i < 5; i++) {
+                grandTotalIncome += weeklyIncomeTotals[i];
+                inflowRow.push(weeklyIncomeTotals[i]);
+            }
+            inflowRow.push(grandTotalIncome);
+            summaryData.push(inflowRow);
+
+            // Expense section
+            summaryData.push(['EXPENSES']);
+            const expenseCategories = ['DIESEL POWER GENERATOR', 'DIESEL TRUCKS / BUSES / TRACTORS', 'EMPLOYEE MEALS',
+                'GASOLINE', 'GENERAL PURCHASES / SUPPLIES', 'LOANS', 'PAYROLL / SEVERANCE / BENEFITS',
+                'REIMBURSEMENTS / RETURNS', 'SERVICES', 'OTHER'];
+            let weeklyExpenseTotals = [0, 0, 0, 0, 0];
+
+            expenseCategories.forEach(category => {
+                const row = [category];
+                let monthlyTotal = 0;
+                for (let i = 0; i < 5; i++) {
+                    const weekTotal = monthData.weeks[i].expense[category].reduce((sum, val) => sum + val, 0);
+                    monthlyTotal += weekTotal;
+                    weeklyExpenseTotals[i] += weekTotal;
+                    row.push(weekTotal);
+                }
+                row.push(monthlyTotal);
+                summaryData.push(row);
+            });
+
+            // Total Outflows
+            const outflowRow = ['Total Outflows'];
+            let grandTotalExpense = 0;
+            for (let i = 0; i < 5; i++) {
+                grandTotalExpense += weeklyExpenseTotals[i];
+                outflowRow.push(weeklyExpenseTotals[i]);
+            }
+            outflowRow.push(grandTotalExpense);
+            summaryData.push(outflowRow);
+
+            // Net Change
+            const netRow = ['Net Change'];
+            let monthlyNetChange = 0;
+            for (let i = 0; i < 5; i++) {
+                const weekNetChange = weeklyIncomeTotals[i] - weeklyExpenseTotals[i];
+                monthlyNetChange += weekNetChange;
+                netRow.push(weekNetChange);
+            }
+            netRow.push(monthlyNetChange);
+            summaryData.push(netRow);
+
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            wsSummary['!cols'] = [{wch: 35}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}];
+            XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Summary');
+
+            // Download
+            const filename = `Weekly_Summary_${monthData.month}_${monthData.year}.xlsx`;
+            XLSX.writeFile(wb, filename);
+        }
+    </script>
+</body>
+</html>
